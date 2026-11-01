@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WheelConfig } from '../types';
 import {
   X,
@@ -7,7 +7,13 @@ import {
   VolumeX,
   Palette,
   Clock,
-  Check
+  Check,
+  GraduationCap,
+  Phone,
+  MessageCircle,
+  Copy,
+  School,
+  Heart
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -23,7 +29,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   config,
   onUpdateConfig
 }) => {
+  const [copied, setCopied] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleCopyPhone = () => {
+    navigator.clipboard.writeText('0913117321');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const themes: { id: WheelConfig['wheelTheme']; name: string; colors: string[] }[] = [
     { id: 'rainbow', name: 'Cầu vồng rực rỡ', colors: ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'] },
@@ -44,7 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-lg leading-tight">Cài Đặt Vòng Quay</h3>
-              <p className="text-xs text-slate-400">Tùy chỉnh âm thanh, thời gian và giao diện</p>
+              <p className="text-xs text-slate-400">Tùy chỉnh cấu hình & thông tin tác giả</p>
             </div>
           </div>
           <button
@@ -160,15 +174,101 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Author Information */}
+          <div className="pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                <GraduationCap className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Thông Tin Tác Giả</h4>
+                <p className="text-[11px] text-slate-400">Ứng dụng hỗ trợ giảng dạy & lớp học</p>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/40 border border-blue-100/90 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-start gap-3.5">
+                {/* Avatar badge */}
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-500/20 shrink-0">
+                  TH
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-extrabold text-slate-900">Thầy Ngô Thanh Hùng</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                      Tác giả
+                    </span>
+                  </div>
+
+                  <div className="mt-1.5 text-xs text-slate-600 flex items-start gap-1.5 leading-relaxed">
+                    <School className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <span>Giáo viên trường THCS Bình San - Mỹ Đức, An Giang</span>
+                  </div>
+
+                  {/* Contact / Action buttons */}
+                  <div className="mt-3 pt-3 border-t border-slate-200/70 flex flex-wrap items-center gap-2">
+                    <a
+                      href="tel:0913117321"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-700 text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95"
+                      title="Gọi điện trực tiếp"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>0913117321</span>
+                    </a>
+
+                    <a
+                      href="https://zalo.me/0913117321"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs hover:shadow-blue-500/20 active:scale-95"
+                      title="Nhắn tin Zalo"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Zalo: 0913117321</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={handleCopyPhone}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                        copied
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                          : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600'
+                      }`}
+                      title="Sao chép số điện thoại / Zalo"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Đã sao chép!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Sao chép</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end shrink-0">
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+            <span>Dành cho quý thầy cô & học sinh</span>
+          </div>
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            Hoàn tất
+            Đóng
           </button>
         </div>
       </div>
