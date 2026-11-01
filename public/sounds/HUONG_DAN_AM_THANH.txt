@@ -1,0 +1,26 @@
+=== HƯỚNG DẪN THÊM FILE ÂM THANH KHI ĐƯA LÊN VERCEL ===
+
+Thầy/cô có 2 cách rất đơn giản để thêm âm thanh quay số và vỗ tay / trúng thưởng:
+
+-------------------------------------------------------------------------
+CÁCH 1: Thêm trực tiếp file MP3 vào thư mục này trước khi đẩy lên GitHub / Vercel
+-------------------------------------------------------------------------
+1. Chuẩn bị 2 file âm thanh định dạng .mp3 (hoặc .wav):
+   - File âm thanh quay số: đặt tên là "spin.mp3"
+   - File âm thanh trúng thưởng / vỗ tay: đặt tên là "win.mp3"
+
+2. Sao chép 2 file đó vào đúng thư mục này:
+   /public/sounds/spin.mp3
+   /public/sounds/win.mp3
+
+3. Đẩy lên GitHub và Vercel:
+   Vite và Vercel sẽ tự động đóng gói toàn bộ thư mục /public vào trang web.
+   Ứng dụng sẽ tự động nhận diện và ưu tiên phát file spin.mp3 và win.mp3 của thầy cô!
+
+-------------------------------------------------------------------------
+CÁCH 2: Tải file trực tiếp ngay trên giao diện ứng dụng (Không cần chỉnh sửa mã nguồn)
+-------------------------------------------------------------------------
+1. Mở ứng dụng, bấm vào nút Cài Đặt (biểu tượng bánh răng).
+2. Tại mục "Âm thanh tùy chỉnh", bấm nút "Tải lên file MP3 quay số" và "Tải lên file MP3 trúng thưởng".
+3. Bấm "Nghe thử" để kiểm tra âm thanh.
+4. Ứng dụng sẽ lưu file âm thanh vào trình duyệt và tự động phát khi quay và khi trúng thưởng!

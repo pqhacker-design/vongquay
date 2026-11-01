@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    color: #0f172a;
+  }
+  input, textarea, select {
+    color: #0f172a;
+  }
+}
+
+/* Custom scrollbar for student list and modals */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
+
+.student-scroll-container {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.student-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+.student-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 8px;
+  margin: 4px 0;
+}
+.student-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+  border: 2px solid #f1f5f9;
+}
+.student-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}

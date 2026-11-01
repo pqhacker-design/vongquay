@@ -1,0 +1,6 @@
+{
+  "name": "Vòng Quay May Mắn - Gọi Tên Học Sinh",
+  "description": "Ứng dụng vòng quay may mắn gọi tên học sinh trong lớp học với hiệu ứng âm thanh sống động, nhập xuất danh sách từ Excel và Word, thêm xóa hàng loạt.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
