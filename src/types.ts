@@ -29,3 +29,12 @@ export interface WheelConfig {
   wheelTheme: 'rainbow' | 'ocean' | 'sunset' | 'emerald' | 'galaxy';
   confettiEnabled: boolean;
 }
+
+export interface GroupResult {
+  id: string;
+  name: string;
+  color: string;
+  leaderId?: string;
+  members: Student[];
+}
+

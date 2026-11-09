@@ -49,18 +49,16 @@ export const ClassSelector: React.FC<ClassSelectorProps> = ({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/90 backdrop-blur-md border border-slate-200 shadow-sm hover:border-blue-400 hover:bg-white text-slate-800 transition-all cursor-pointer"
+        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-2xs hover:border-blue-400 hover:bg-white text-slate-800 transition-all cursor-pointer h-9"
+        title="Chọn lớp học"
       >
-        <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+        <div className="w-5 h-5 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
           <GraduationCap className="w-3.5 h-3.5" />
         </div>
-        <div className="text-left">
-          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Lớp đang chọn</div>
-          <div className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-            <span className="truncate max-w-[120px]">{currentClass ? currentClass.name : 'Chưa chọn'}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-          </div>
-        </div>
+        <span className="text-xs font-extrabold text-slate-800 truncate max-w-[90px] sm:max-w-[130px]">
+          {currentClass ? currentClass.name : 'Chưa chọn'}
+        </span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
       </button>
 
       {/* Dropdown Menu */}

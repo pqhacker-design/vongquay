@@ -13,6 +13,7 @@ import { ImportExportModal } from './components/ImportExportModal';
 import { WinnerModal } from './components/WinnerModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SpinHistoryModal } from './components/SpinHistoryModal';
+import { GroupDivisionModal } from './components/GroupDivisionModal';
 import { soundEngine } from './utils/audio';
 import {
   Sparkles,
@@ -23,7 +24,9 @@ import {
   Maximize2,
   Minimize2,
   GraduationCap,
-  Play
+  Play,
+  UsersRound,
+  Users
 } from 'lucide-react';
 
 const STORAGE_KEYS = {
@@ -134,6 +137,8 @@ export default function App() {
   // Modals state
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+  const [isGroupDivisionOpen, setIsGroupDivisionOpen] = useState(false);
+  const [groupDivisionSelectedIds, setGroupDivisionSelectedIds] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [winner, setWinner] = useState<Student | null>(null);
@@ -141,6 +146,7 @@ export default function App() {
   // Spin & fullscreen states
   const [isSpinning, setIsSpinning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'wheel' | 'students'>('wheel');
 
   // Sync to localStorage
   useEffect(() => {
@@ -339,28 +345,28 @@ export default function App() {
   return (
     <div className="h-screen w-screen max-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-slate-100 flex flex-col font-sans selection:bg-rose-500 selection:text-white">
       {/* Top Header Navbar */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0 px-3 py-2 sm:px-6 z-30">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur-md shrink-0 px-2.5 py-1.5 sm:px-4 z-30">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           {/* Brand Logo & Title */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-rose-500/20 shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 flex items-center justify-center shadow-md shadow-rose-500/20 shrink-0">
+              <Sparkles className="w-4.5 h-4.5 text-white" />
             </div>
-            <div>
-              <h1 className="font-black text-sm sm:text-base tracking-tight text-white flex items-center gap-2 leading-none">
-                <span>VÒNG QUAY MAY MẮN</span>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+            <div className="min-w-0">
+              <h1 className="font-black text-xs sm:text-sm tracking-tight text-white flex items-center gap-1.5 leading-none">
+                <span className="truncate">VÒNG QUAY MAY MẮN</span>
+                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
                   LỚP HỌC
                 </span>
               </h1>
-              <p className="text-[11px] text-slate-400 hidden sm:block mt-0.5">
+              <p className="text-[10px] text-slate-400 hidden xl:block mt-0.5">
                 Gọi tên học sinh ngẫu nhiên • Âm thanh sống động • Hỗ trợ Excel & Word
               </p>
             </div>
           </div>
 
           {/* Center/Right Nav Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Class Selector Dropdown */}
             <ClassSelector
               classes={classes}
@@ -371,28 +377,41 @@ export default function App() {
               onDeleteClass={handleDeleteClass}
             />
 
+            {/* Random Group Division Trigger */}
+            <button
+              onClick={() => {
+                setGroupDivisionSelectedIds([]);
+                setIsGroupDivisionOpen(true);
+              }}
+              className="h-9 px-2 sm:px-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold shadow-2xs active:scale-95"
+              title="Chia nhóm ngẫu nhiên cho lớp học"
+            >
+              <UsersRound className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span className="hidden md:inline">Chia nhóm</span>
+            </button>
+
             {/* Quick Sound Toggle */}
             <button
               onClick={() => setConfig(c => ({ ...c, soundEnabled: !c.soundEnabled }))}
-              className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              className={`w-9 h-9 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                 config.soundEnabled
                   ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30'
                   : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
               }`}
               title={config.soundEnabled ? 'Đang bật âm thanh (Bấm để tắt)' : 'Đang tắt âm thanh (Bấm để bật)'}
             >
-              {config.soundEnabled ? <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" />}
+              {config.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
             {/* Spin History Modal Trigger */}
             <button
               onClick={() => setIsHistoryOpen(true)}
-              className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+              className="relative w-9 h-9 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center"
               title="Lịch sử các lượt quay"
             >
-              <History className="w-4 h-4 sm:w-5 sm:h-5" />
+              <History className="w-4 h-4" />
               {history.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-slate-900 font-extrabold text-[10px] rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-slate-900 font-extrabold text-[9px] rounded-full flex items-center justify-center">
                   {history.length > 99 ? '99+' : history.length}
                 </span>
               )}
@@ -401,16 +420,16 @@ export default function App() {
             {/* Settings Modal Trigger */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center"
               title="Cài đặt vòng quay"
             >
-              <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <SettingsIcon className="w-4 h-4" />
             </button>
 
             {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
-              className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-md cursor-pointer hidden md:flex items-center gap-1.5 text-xs"
+              className="h-9 px-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-md cursor-pointer hidden md:flex items-center gap-1.5 text-xs"
               title="Toàn màn hình chiếu cho lớp học"
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -420,11 +439,39 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Workspace Body (Strictly fits inside viewport without overflow) */}
-      <main className="flex-1 min-h-0 max-w-7xl w-full mx-auto p-2 sm:p-3.5 flex flex-col overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch overflow-hidden">
-          {/* Left Column: Lucky Wheel Stage (Locked & stationary) */}
-          <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center items-center bg-slate-800/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl sm:rounded-3xl p-2 sm:p-4 relative shadow-2xl h-full min-h-0 overflow-hidden">
+      {/* Mobile Tab Switcher (Visible only on small viewports < 768px) */}
+      <div className="md:hidden px-2 pt-1.5 shrink-0">
+        <div className="flex bg-slate-800/90 p-1 rounded-xl border border-slate-700/80 max-w-md mx-auto">
+          <button
+            type="button"
+            onClick={() => setMobileTab('wheel')}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mobileTab === 'wheel' ? 'bg-gradient-to-r from-rose-600 to-amber-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Vòng quay</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('students')}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mobileTab === 'students' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Danh sách HS ({students.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Workspace Body */}
+      <main className="flex-1 min-h-0 max-w-7xl w-full mx-auto p-2 sm:p-3 flex flex-col overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-3 flex-1 min-h-0 items-stretch overflow-hidden">
+          {/* Left Column: Lucky Wheel Stage */}
+          <div className={`md:col-span-6 lg:col-span-7 xl:col-span-7 flex flex-col justify-center items-center bg-slate-800/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl sm:rounded-3xl p-1.5 sm:p-3 relative shadow-2xl h-full min-h-0 overflow-hidden ${
+            mobileTab === 'wheel' ? 'flex' : 'hidden md:flex'
+          }`}>
             {/* Ambient Background Glow Effect */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -440,8 +487,10 @@ export default function App() {
             />
           </div>
 
-          {/* Right Column: Student Management Panel (Independent Scrolling inside) */}
-          <div className="lg:col-span-5 xl:col-span-4 flex flex-col h-full min-h-0 overflow-hidden">
+          {/* Right Column: Student Management Panel */}
+          <div className={`md:col-span-6 lg:col-span-5 xl:col-span-5 flex flex-col h-full min-h-0 overflow-hidden ${
+            mobileTab === 'students' ? 'flex' : 'hidden md:flex'
+          }`}>
             <StudentManager
               students={students}
               onAddStudent={handleAddStudent}
@@ -452,6 +501,10 @@ export default function App() {
               onResetPickedCounts={handleResetPickedCounts}
               onOpenBulkAdd={() => setIsBulkAddOpen(true)}
               onOpenImportExport={() => setIsImportExportOpen(true)}
+              onOpenGroupDivision={(selectedIds) => {
+                setGroupDivisionSelectedIds(selectedIds || []);
+                setIsGroupDivisionOpen(true);
+              }}
             />
           </div>
         </div>
@@ -470,6 +523,14 @@ export default function App() {
         className={currentClass?.name || 'Lớp học'}
         students={students}
         onImportStudents={handleImportStudents}
+      />
+
+      <GroupDivisionModal
+        isOpen={isGroupDivisionOpen}
+        onClose={() => setIsGroupDivisionOpen(false)}
+        students={students}
+        className={currentClass?.name || 'Lớp học'}
+        initialSelectedIds={groupDivisionSelectedIds}
       />
 
       <WinnerModal

@@ -49,3 +49,19 @@
 .student-scroll-container::-webkit-scrollbar-thumb:hover {
   background: #3b82f6;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-clean, .print-clean * {
+    visibility: visible;
+  }
+  .print-clean {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
+
