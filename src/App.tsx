@@ -466,10 +466,10 @@ export default function App() {
       </div>
 
       {/* Main Workspace Body */}
-      <main className="flex-1 min-h-0 max-w-7xl w-full mx-auto p-2 sm:p-3 flex flex-col overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-3 flex-1 min-h-0 items-stretch overflow-hidden">
-          {/* Left Column: Lucky Wheel Stage */}
-          <div className={`md:col-span-6 lg:col-span-7 xl:col-span-7 flex flex-col justify-center items-center bg-slate-800/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl sm:rounded-3xl p-1.5 sm:p-3 relative shadow-2xl h-full min-h-0 overflow-hidden ${
+      <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto p-2 sm:p-3 flex flex-col overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3.5 flex-1 min-h-0 items-stretch overflow-hidden">
+          {/* Left Column: Lucky Wheel Stage (Enlarged to 8/12 on desktop) */}
+          <div className={`md:col-span-7 lg:col-span-8 xl:col-span-8 2xl:col-span-9 flex flex-col justify-center items-center bg-slate-800/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl sm:rounded-3xl p-1.5 sm:p-3 relative shadow-2xl h-full min-h-0 overflow-hidden ${
             mobileTab === 'wheel' ? 'flex' : 'hidden md:flex'
           }`}>
             {/* Ambient Background Glow Effect */}
@@ -487,8 +487,8 @@ export default function App() {
             />
           </div>
 
-          {/* Right Column: Student Management Panel */}
-          <div className={`md:col-span-6 lg:col-span-5 xl:col-span-5 flex flex-col h-full min-h-0 overflow-hidden ${
+          {/* Right Column: Student Management Panel (Narrowed & compact to 4/12) */}
+          <div className={`md:col-span-5 lg:col-span-4 xl:col-span-4 2xl:col-span-3 flex flex-col h-full min-h-0 overflow-hidden ${
             mobileTab === 'students' ? 'flex' : 'hidden md:flex'
           }`}>
             <StudentManager
