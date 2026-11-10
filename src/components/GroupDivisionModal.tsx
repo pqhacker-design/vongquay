@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Student, GroupResult } from '../types';
 import { soundEngine } from '../utils/audio';
 import confetti from 'canvas-confetti';
@@ -32,6 +32,7 @@ interface GroupDivisionModalProps {
 
 type DivisionType = 'byGroupCount' | 'byMemberCount';
 type NamingScheme = 'number' | 'team' | 'color' | 'animal';
+export type GenderBalanceMode = 'both' | 'male' | 'female' | 'none';
 
 const COLOR_PALETTES = [
   { name: 'Xanh dương', bg: 'bg-blue-500/10 border-blue-500/30 text-blue-400', badge: 'bg-blue-500 text-white', header: 'bg-blue-600' },
@@ -78,7 +79,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
   const [memberCountInput, setMemberCountInput] = useState<number>(4);
   const [namingScheme, setNamingScheme] = useState<NamingScheme>('number');
   const [assignLeader, setAssignLeader] = useState<boolean>(true);
-  const [balanceGender, setBalanceGender] = useState<boolean>(true);
+  const [genderBalanceMode, setGenderBalanceMode] = useState<GenderBalanceMode>('both');
 
   // Group division result state
   const [groups, setGroups] = useState<GroupResult[]>([]);
@@ -119,7 +120,11 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
     }
   }, []);
 
-  // Main Random Grouping Algorithm (Fisher-Yates Shuffle + Optional Balanced Gender Partition)
+  // Main Random Grouping Algorithm supporting:
+  // 'both': Balanced male & female distribution + equal total sizes (max diff <= 1)
+  // 'male': Divide males evenly, fill females greedily to equalize group sizes
+  // 'female': Divide females evenly, fill males greedily to equalize group sizes
+  // 'none': Pure random shuffle without gender constraints
   const performDivision = useCallback(() => {
     if (poolStudents.length === 0) {
       setGroups([]);
@@ -158,13 +163,11 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
         });
       }
 
-      if (balanceGender) {
+      if (genderBalanceMode === 'both') {
         // Balanced Male & Female partition:
-        // Separate male and female students
         const males = poolStudents.filter(s => (s.gender || 'male') === 'male');
         const females = poolStudents.filter(s => s.gender === 'female');
 
-        // Shuffle each pool independently with Fisher-Yates
         const shuffledMales = [...males];
         for (let i = shuffledMales.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -183,15 +186,82 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
           newGroups[targetGroupIndex].members.push(student);
         });
 
-        // Distribute females round-robin starting from the group with fewest males
-        // to maintain both gender balance and total group size equality
+        // Distribute females starting from group with fewest males
         const femaleStartOffset = (numGroups - (shuffledMales.length % numGroups)) % numGroups;
         shuffledFemales.forEach((student, index) => {
           const targetGroupIndex = (femaleStartOffset + index) % numGroups;
           newGroups[targetGroupIndex].members.push(student);
         });
+      } else if (genderBalanceMode === 'male') {
+        // ♂ Chia đều số Nam:
+        // Distribute males evenly across all groups, then fill females greedily to keep total group sizes balanced
+        const males = poolStudents.filter(s => (s.gender || 'male') === 'male');
+        const females = poolStudents.filter(s => s.gender === 'female');
+
+        const shuffledMales = [...males];
+        for (let i = shuffledMales.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledMales[i], shuffledMales[j]] = [shuffledMales[j], shuffledMales[i]];
+        }
+
+        const shuffledFemales = [...females];
+        for (let i = shuffledFemales.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledFemales[i], shuffledFemales[j]] = [shuffledFemales[j], shuffledFemales[i]];
+        }
+
+        // Distribute males round-robin
+        shuffledMales.forEach((student, index) => {
+          const targetGroupIndex = index % numGroups;
+          newGroups[targetGroupIndex].members.push(student);
+        });
+
+        // Add females greedily to group with minimum members to keep total size difference <= 1
+        shuffledFemales.forEach(student => {
+          let minGroup = newGroups[0];
+          for (let g = 1; g < newGroups.length; g++) {
+            if (newGroups[g].members.length < minGroup.members.length) {
+              minGroup = newGroups[g];
+            }
+          }
+          minGroup.members.push(student);
+        });
+      } else if (genderBalanceMode === 'female') {
+        // ♀ Chia đều số Nữ:
+        // Distribute females evenly across all groups, then fill males greedily to keep total group sizes balanced
+        const males = poolStudents.filter(s => (s.gender || 'male') === 'male');
+        const females = poolStudents.filter(s => s.gender === 'female');
+
+        const shuffledMales = [...males];
+        for (let i = shuffledMales.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledMales[i], shuffledMales[j]] = [shuffledMales[j], shuffledMales[i]];
+        }
+
+        const shuffledFemales = [...females];
+        for (let i = shuffledFemales.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledFemales[i], shuffledFemales[j]] = [shuffledFemales[j], shuffledFemales[i]];
+        }
+
+        // Distribute females round-robin
+        shuffledFemales.forEach((student, index) => {
+          const targetGroupIndex = index % numGroups;
+          newGroups[targetGroupIndex].members.push(student);
+        });
+
+        // Add males greedily to group with minimum members to keep total size difference <= 1
+        shuffledMales.forEach(student => {
+          let minGroup = newGroups[0];
+          for (let g = 1; g < newGroups.length; g++) {
+            if (newGroups[g].members.length < minGroup.members.length) {
+              minGroup = newGroups[g];
+            }
+          }
+          minGroup.members.push(student);
+        });
       } else {
-        // Standard random distribution
+        // Standard random distribution (Ngẫu nhiên tự do)
         const shuffled = [...poolStudents];
         for (let i = shuffled.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -228,7 +298,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
         // ignore
       }
     }, 250);
-  }, [poolStudents, divisionType, groupCountInput, memberCountInput, namingScheme, assignLeader, balanceGender, getGroupName]);
+  }, [poolStudents, divisionType, groupCountInput, memberCountInput, namingScheme, assignLeader, genderBalanceMode, getGroupName]);
 
   // Initial division on open or when pool changes
   useEffect(() => {
@@ -236,6 +306,18 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
       performDivision();
     }
   }, [isOpen, poolStudents.length, performDivision, groups.length]);
+
+  // Re-run division immediately when gender balance mode changes
+  const isFirstGenderModeRun = useRef(true);
+  useEffect(() => {
+    if (isFirstGenderModeRun.current) {
+      isFirstGenderModeRun.current = false;
+      return;
+    }
+    if (isOpen && poolStudents.length > 0) {
+      performDivision();
+    }
+  }, [genderBalanceMode]);
 
   if (!isOpen) return null;
 
@@ -297,8 +379,18 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
   const handleCopyGroups = () => {
     if (groups.length === 0) return;
 
+    const genderRuleLabel =
+      genderBalanceMode === 'both'
+        ? 'Chia đều cả Nam và Nữ'
+        : genderBalanceMode === 'male'
+        ? 'Chia đều số Nam'
+        : genderBalanceMode === 'female'
+        ? 'Chia đều số Nữ'
+        : 'Ngẫu nhiên tự do';
+
     let text = `📋 KẾT QUẢ CHIA NHÓM - ${className.toUpperCase()}\n`;
     text += `Tổng số: ${poolStudents.length} học sinh (${poolMaleCount} Nam • ${poolFemaleCount} Nữ) • Gồm ${groups.length} nhóm\n`;
+    text += `Quy tắc chia: ${genderRuleLabel}\n`;
     text += `Thời gian: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}\n`;
     text += `-------------------------------------------\n\n`;
 
@@ -577,26 +669,79 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
               </div>
             </div>
 
-            {/* Quick check options bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-              <div className="flex flex-wrap items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={balanceGender}
-                    onChange={(e) => setBalanceGender(e.target.checked)}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                  <span className="flex items-center gap-1 font-semibold text-slate-800">
-                    <span className="text-blue-600 font-bold">⚖️</span>
-                    <span>Chia đều Nam và Nữ</span>
-                    <span className="text-[11px] font-normal text-slate-500">
-                      (♂ {poolMaleCount} • ♀ {poolFemaleCount})
-                    </span>
-                  </span>
-                </label>
+            {/* Quick check options bar with 4-mode Gender Balancing Selector */}
+            <div className="pt-2 border-t border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
+              {/* Left: 4 Gender Balance Mode Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 shrink-0">
+                  <span className="text-blue-600 font-extrabold text-sm">⚖️</span>
+                  Cân bằng giới tính:
+                </span>
 
-                <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
+                <div className="inline-flex bg-white p-0.5 rounded-xl border border-slate-200 shadow-2xs flex-wrap gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setGenderBalanceMode('both')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      genderBalanceMode === 'both'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                    title="Cả số Nam và số Nữ đều được chia đều nhất có thể vào các nhóm"
+                  >
+                    <span>⚖️ Đều cả Nam & Nữ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGenderBalanceMode('male')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      genderBalanceMode === 'male'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+                    }`}
+                    title="Chia đều số học sinh Nam vào các nhóm, học sinh Nữ được xếp bù để sĩ số các nhóm bằng nhau nhất"
+                  >
+                    <span className="font-extrabold text-blue-500">♂</span>
+                    <span>Chia đều số Nam</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGenderBalanceMode('female')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      genderBalanceMode === 'female'
+                        ? 'bg-rose-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50'
+                    }`}
+                    title="Chia đều số học sinh Nữ vào các nhóm, học sinh Nam được xếp bù để sĩ số các nhóm bằng nhau nhất"
+                  >
+                    <span className="font-extrabold text-rose-500">♀</span>
+                    <span>Chia đều số Nữ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGenderBalanceMode('none')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      genderBalanceMode === 'none'
+                        ? 'bg-slate-800 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                    title="Xáo trộn ngẫu nhiên tự do hoàn toàn, không phân biệt giới tính"
+                  >
+                    <span>🎲 Tự do</span>
+                  </button>
+                </div>
+
+                <span className="text-[11px] text-slate-400 font-medium shrink-0">
+                  (Lớp có: <strong className="text-blue-600">{poolMaleCount} Nam</strong> • <strong className="text-rose-600">{poolFemaleCount} Nữ</strong>)
+                </span>
+              </div>
+
+              {/* Right: Leader toggle and Copy/Excel */}
+              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-slate-700 font-medium">
                   <input
                     type="checkbox"
                     checked={assignLeader}
@@ -624,33 +769,32 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
                     Chỉ định nhóm trưởng
                   </span>
                 </label>
-              </div>
 
-              {/* Action buttons: Copy & Excel */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleCopyGroups}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    copied
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                      : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
-                  }`}
-                  title="Sao chép toàn bộ danh sách chia nhóm để dán vào Zalo / Word"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-                  <span>{copied ? 'Đã sao chép!' : 'Sao chép kết quả'}</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleCopyGroups}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      copied
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                        : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                    }`}
+                    title="Sao chép toàn bộ danh sách chia nhóm để dán vào Zalo / Word"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                    <span>{copied ? 'Đã sao chép!' : 'Sao chép kết quả'}</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                  title="Xuất kết quả chia nhóm ra file Excel (.xlsx)"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Xuất Excel</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Xuất kết quả chia nhóm ra file Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Xuất Excel</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -913,11 +1057,23 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
         <div className="px-4 sm:px-6 py-3 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span>
-              Tổng số học sinh: <strong className="text-slate-900">{poolStudents.length}</strong>
+              Tổng số: <strong className="text-slate-900">{poolStudents.length} HS</strong> ({poolMaleCount} Nam • {poolFemaleCount} Nữ)
             </span>
             <span>•</span>
             <span>
               Số nhóm: <strong className="text-blue-600">{groups.length} nhóm</strong>
+            </span>
+            <span>•</span>
+            <span className="hidden sm:inline">
+              Quy tắc: <strong className="text-indigo-600">
+                {genderBalanceMode === 'both'
+                  ? '⚖️ Đều cả Nam & Nữ'
+                  : genderBalanceMode === 'male'
+                  ? '♂ Chia đều số Nam'
+                  : genderBalanceMode === 'female'
+                  ? '♀ Chia đều số Nữ'
+                  : '🎲 Ngẫu nhiên'}
+              </strong>
             </span>
             {movingStudent && (
               <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 font-bold animate-pulse flex items-center gap-1">
