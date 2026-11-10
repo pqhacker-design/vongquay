@@ -3,6 +3,7 @@ export interface Student {
   name: string;
   active: boolean; // whether included in the active wheel
   pickedCount: number; // how many times picked
+  gender?: 'male' | 'female'; // 'male' = Nam, 'female' = Nữ
   note?: string;
 }
 

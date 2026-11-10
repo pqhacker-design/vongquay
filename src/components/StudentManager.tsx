@@ -26,6 +26,7 @@ interface StudentManagerProps {
   onDeleteStudent: (id: string) => void;
   onBulkDeleteStudents: (ids: string[]) => void;
   onBulkToggleActive: (ids: string[], active: boolean) => void;
+  onBulkSetGender?: (ids: string[], gender: 'male' | 'female') => void;
   onResetPickedCounts: (ids?: string[]) => void;
   onOpenBulkAdd: () => void;
   onOpenImportExport: () => void;
@@ -39,6 +40,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   onDeleteStudent,
   onBulkDeleteStudents,
   onBulkToggleActive,
+  onBulkSetGender,
   onResetPickedCounts,
   onOpenBulkAdd,
   onOpenImportExport,
@@ -79,6 +81,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
   const activeCount = useMemo(() => students.filter(s => s.active).length, [students]);
   const pickedTotalCount = useMemo(() => students.reduce((acc, s) => acc + s.pickedCount, 0), [students]);
+  const maleCount = useMemo(() => students.filter(s => (s.gender || 'male') === 'male').length, [students]);
+  const femaleCount = useMemo(() => students.filter(s => s.gender === 'female').length, [students]);
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,8 +182,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           <h2 className="font-extrabold text-sm text-white tracking-tight">Học Sinh</h2>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+        <div className="flex items-center gap-1 flex-wrap justify-end">
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30" title="Số lượng học sinh Nam">
+            ♂ {maleCount}
+          </span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30" title="Số lượng học sinh Nữ">
+            ♀ {femaleCount}
+          </span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-700/80 text-slate-200 border border-slate-600/50">
             {activeCount}/{students.length} HS
           </span>
           {pickedTotalCount > 0 && (
@@ -282,25 +292,48 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {selectedIds.size > 0 ? (
         /* Dedicated 2-Row Bulk Actions Bar when students are selected */
         <div className="bg-blue-50/95 border-b border-blue-200 shrink-0 divide-y divide-blue-200/60 animate-in fade-in duration-100">
-          {/* Row A: Selection Count & Deselect Button */}
-          <div className="px-2.5 py-1.5 flex items-center justify-between text-xs">
+          {/* Row A: Selection Count & Quick Gender Assignment & Deselect Button */}
+          <div className="px-2.5 py-1.5 flex items-center justify-between text-xs flex-wrap gap-1">
             <button
               type="button"
               onClick={handleSelectAllFiltered}
-              className="cursor-pointer text-blue-800 hover:text-blue-950 transition-colors flex items-center gap-1.5 font-black"
+              className="cursor-pointer text-blue-800 hover:text-blue-950 transition-colors flex items-center gap-1.5 font-black shrink-0"
               title="Bấm để bỏ chọn tất cả"
             >
               <CheckSquare className="w-4 h-4 text-blue-600" />
-              <span>Đã chọn {selectedIds.size}/{filteredStudents.length} học sinh</span>
+              <span>Đã chọn {selectedIds.size}/{filteredStudents.length} HS</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-              className="text-[11px] text-blue-600 hover:text-blue-800 underline font-bold cursor-pointer"
-            >
-              Bỏ chọn
-            </button>
+            <div className="flex items-center gap-1.5">
+              {onBulkSetGender && (
+                <div className="flex items-center bg-white rounded-lg border border-blue-200 p-0.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => onBulkSetGender(Array.from(selectedIds), 'male')}
+                    className="px-1.5 py-0.5 hover:bg-blue-50 text-blue-700 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                    title="Đặt tất cả HS đã chọn là Nam"
+                  >
+                    ♂ Đặt Nam
+                  </button>
+                  <span className="text-slate-200">|</span>
+                  <button
+                    type="button"
+                    onClick={() => onBulkSetGender(Array.from(selectedIds), 'female')}
+                    className="px-1.5 py-0.5 hover:bg-rose-50 text-rose-700 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                    title="Đặt tất cả HS đã chọn là Nữ"
+                  >
+                    ♀ Đặt Nữ
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="text-[11px] text-blue-600 hover:text-blue-800 underline font-bold cursor-pointer"
+              >
+                Bỏ chọn
+              </button>
+            </div>
           </div>
 
           {/* Row B: 4 Action Buttons in a Clean 4-Column Grid */}
@@ -547,8 +580,26 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   )}
                 </div>
 
-                {/* Right: Picked badge & Action buttons */}
+                {/* Right: Gender pill, Picked badge & Action buttons */}
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* Gender toggle button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const nextGender = student.gender === 'female' ? 'male' : 'female';
+                      onUpdateStudent(student.id, { gender: nextGender });
+                    }}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold transition-all cursor-pointer shrink-0 select-none ${
+                      student.gender === 'female'
+                        ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-200/80'
+                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200/80'
+                    }`}
+                    title={`Giới tính: ${student.gender === 'female' ? 'Nữ' : 'Nam'} (Bấm để đổi thành ${student.gender === 'female' ? 'Nam' : 'Nữ'})`}
+                  >
+                    {student.gender === 'female' ? '♀ Nữ' : '♂ Nam'}
+                  </button>
+
                   {student.pickedCount > 0 && (
                     <span
                       className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[9px] shrink-0"

@@ -177,13 +177,14 @@ export function exportStudentsToExcel(students: Student[], className: string) {
     [`DANH SÁCH HỌC SINH - ${className.toUpperCase()}`],
     [`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}`],
     [],
-    ['STT', 'Họ và tên', 'Trạng thái', 'Số lần đã gọi', 'Ghi chú']
+    ['STT', 'Họ và tên', 'Giới tính', 'Trạng thái', 'Số lần đã gọi', 'Ghi chú']
   ];
 
   students.forEach((s, idx) => {
     data.push([
       (idx + 1).toString(),
       s.name,
+      s.gender === 'female' ? 'Nữ' : 'Nam',
       s.active ? 'Đang tham gia' : 'Tạm loại / Vắng',
       s.pickedCount.toString(),
       s.note || ''
@@ -196,6 +197,7 @@ export function exportStudentsToExcel(students: Student[], className: string) {
   ws['!cols'] = [
     { wch: 8 },  // STT
     { wch: 28 }, // Họ và tên
+    { wch: 12 }, // Giới tính
     { wch: 18 }, // Trạng thái
     { wch: 16 }, // Số lần đã gọi
     { wch: 25 }, // Ghi chú
@@ -218,6 +220,9 @@ export function exportStudentsToWord(students: Student[], className: string) {
     <tr>
       <td style="border: 1px solid #94a3b8; padding: 8px 12px; text-align: center;">${index + 1}</td>
       <td style="border: 1px solid #94a3b8; padding: 8px 12px; font-weight: 600; color: #1e293b;">${s.name}</td>
+      <td style="border: 1px solid #94a3b8; padding: 8px 12px; text-align: center; font-weight: 500; color: ${s.gender === 'female' ? '#e11d48' : '#2563eb'};">
+        ${s.gender === 'female' ? 'Nữ' : 'Nam'}
+      </td>
       <td style="border: 1px solid #94a3b8; padding: 8px 12px; text-align: center; color: ${s.active ? '#16a34a' : '#dc2626'};">
         ${s.active ? 'Đang tham gia' : 'Tạm loại'}
       </td>
@@ -290,6 +295,7 @@ export function exportStudentsToWord(students: Student[], className: string) {
             <tr>
               <th style="width: 50px;">STT</th>
               <th>Họ và tên học sinh</th>
+              <th style="width: 80px;">Giới tính</th>
               <th style="width: 120px;">Trạng thái</th>
               <th style="width: 100px;">Đã gọi</th>
               <th>Ghi chú</th>

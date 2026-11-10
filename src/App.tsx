@@ -15,6 +15,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { SpinHistoryModal } from './components/SpinHistoryModal';
 import { GroupDivisionModal } from './components/GroupDivisionModal';
 import { soundEngine } from './utils/audio';
+import { detectGender } from './utils/gender';
 import {
   Sparkles,
   Settings as SettingsIcon,
@@ -51,20 +52,20 @@ const INITIAL_CLASSES: ClassGroup[] = [
     name: 'Lớp 12A1',
     createdAt: Date.now(),
     students: [
-      { id: 's-1', name: 'Nguyễn Hoàng Long', active: true, pickedCount: 0 },
-      { id: 's-2', name: 'Trần Thảo My', active: true, pickedCount: 0 },
-      { id: 's-3', name: 'Lê Minh Triết', active: true, pickedCount: 0 },
-      { id: 's-4', name: 'Phạm Quỳnh Như', active: true, pickedCount: 0 },
-      { id: 's-5', name: 'Đặng Tuấn Kiệt', active: true, pickedCount: 0 },
-      { id: 's-6', name: 'Bùi Lan Hương', active: true, pickedCount: 0 },
-      { id: 's-7', name: 'Võ Quốc Huy', active: true, pickedCount: 0 },
-      { id: 's-8', name: 'Đỗ Thu Thảo', active: true, pickedCount: 0 },
-      { id: 's-9', name: 'Vũ Đức Anh', active: true, pickedCount: 0 },
-      { id: 's-10', name: 'Mai Phương Linh', active: true, pickedCount: 0 },
-      { id: 's-11', name: 'Ngô Gia Hưng', active: true, pickedCount: 0 },
-      { id: 's-12', name: 'Trịnh Bảo Ngọc', active: true, pickedCount: 0 },
-      { id: 's-13', name: 'Dương Hải Đăng', active: true, pickedCount: 0 },
-      { id: 's-14', name: 'Phan Thanh Trúc', active: true, pickedCount: 0 }
+      { id: 's-1', name: 'Nguyễn Hoàng Long', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-2', name: 'Trần Thảo My', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-3', name: 'Lê Minh Triết', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-4', name: 'Phạm Quỳnh Như', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-5', name: 'Đặng Tuấn Kiệt', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-6', name: 'Bùi Lan Hương', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-7', name: 'Võ Quốc Huy', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-8', name: 'Đỗ Thu Thảo', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-9', name: 'Vũ Đức Anh', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-10', name: 'Mai Phương Linh', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-11', name: 'Ngô Gia Hưng', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-12', name: 'Trịnh Bảo Ngọc', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-13', name: 'Dương Hải Đăng', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-14', name: 'Phan Thanh Trúc', active: true, pickedCount: 0, gender: 'female' }
     ]
   },
   {
@@ -72,12 +73,12 @@ const INITIAL_CLASSES: ClassGroup[] = [
     name: 'Nhóm Thuyết Trình',
     createdAt: Date.now() - 10000,
     students: [
-      { id: 's-201', name: 'Nguyễn Văn An', active: true, pickedCount: 0 },
-      { id: 's-202', name: 'Trần Thị Bình', active: true, pickedCount: 0 },
-      { id: 's-203', name: 'Lê Hoàng Cường', active: true, pickedCount: 0 },
-      { id: 's-204', name: 'Phạm Quỳnh Duyên', active: true, pickedCount: 0 },
-      { id: 's-205', name: 'Hoàng Minh Đức', active: true, pickedCount: 0 },
-      { id: 's-206', name: 'Vũ Hải Yến', active: true, pickedCount: 0 }
+      { id: 's-201', name: 'Nguyễn Văn An', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-202', name: 'Trần Thị Bình', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-203', name: 'Lê Hoàng Cường', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-204', name: 'Phạm Quỳnh Duyên', active: true, pickedCount: 0, gender: 'female' },
+      { id: 's-205', name: 'Hoàng Minh Đức', active: true, pickedCount: 0, gender: 'male' },
+      { id: 's-206', name: 'Vũ Hải Yến', active: true, pickedCount: 0, gender: 'female' }
     ]
   }
 ];
@@ -87,7 +88,17 @@ export default function App() {
   const [classes, setClasses] = useState<ClassGroup[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.CLASSES);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed: ClassGroup[] = JSON.parse(stored);
+        // Normalize students to ensure gender exists
+        return parsed.map(cls => ({
+          ...cls,
+          students: (cls.students || []).map(s => ({
+            ...s,
+            gender: s.gender || detectGender(s.name)
+          }))
+        }));
+      }
     } catch {
       // fallback
     }
@@ -200,11 +211,13 @@ export default function App() {
 
   // 1. Add single student
   const handleAddStudent = useCallback((name: string) => {
+    const trimmed = name.trim();
     const newStudent: Student = {
       id: `s-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name: name.trim(),
+      name: trimmed,
       active: true,
-      pickedCount: 0
+      pickedCount: 0,
+      gender: detectGender(trimmed)
     };
     updateCurrentClassStudents(prev => [...prev, newStudent]);
   }, [updateCurrentClassStudents]);
@@ -235,7 +248,15 @@ export default function App() {
     );
   }, [updateCurrentClassStudents]);
 
-  // 6. Reset picked counts
+  // 6. Bulk set gender
+  const handleBulkSetGender = useCallback((ids: string[], gender: 'male' | 'female') => {
+    const idSet = new Set(ids);
+    updateCurrentClassStudents(prev =>
+      prev.map(s => (idSet.has(s.id) ? { ...s, gender } : s))
+    );
+  }, [updateCurrentClassStudents]);
+
+  // 7. Reset picked counts
   const handleResetPickedCounts = useCallback((ids?: string[]) => {
     const idSet = ids ? new Set(ids) : null;
     updateCurrentClassStudents(prev =>
@@ -243,24 +264,26 @@ export default function App() {
     );
   }, [updateCurrentClassStudents]);
 
-  // 7. Bulk add from text
+  // 8. Bulk add from text
   const handleBulkAddStudents = useCallback((names: string[]) => {
     const newStudents: Student[] = names.map((name, idx) => ({
       id: `s-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       name,
       active: true,
-      pickedCount: 0
+      pickedCount: 0,
+      gender: detectGender(name)
     }));
     updateCurrentClassStudents(prev => [...prev, ...newStudents]);
   }, [updateCurrentClassStudents]);
 
-  // 8. Import students from Excel/Word
+  // 9. Import students from Excel/Word
   const handleImportStudents = useCallback((names: string[], overwrite: boolean) => {
     const newStudents: Student[] = names.map((name, idx) => ({
       id: `s-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       name,
       active: true,
-      pickedCount: 0
+      pickedCount: 0,
+      gender: detectGender(name)
     }));
     updateCurrentClassStudents(prev => (overwrite ? newStudents : [...prev, ...newStudents]));
   }, [updateCurrentClassStudents]);
@@ -498,6 +521,7 @@ export default function App() {
               onDeleteStudent={handleDeleteStudent}
               onBulkDeleteStudents={handleBulkDeleteStudents}
               onBulkToggleActive={handleBulkToggleActive}
+              onBulkSetGender={handleBulkSetGender}
               onResetPickedCounts={handleResetPickedCounts}
               onOpenBulkAdd={() => setIsBulkAddOpen(true)}
               onOpenImportExport={() => setIsImportExportOpen(true)}

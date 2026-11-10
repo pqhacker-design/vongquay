@@ -78,6 +78,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
   const [memberCountInput, setMemberCountInput] = useState<number>(4);
   const [namingScheme, setNamingScheme] = useState<NamingScheme>('number');
   const [assignLeader, setAssignLeader] = useState<boolean>(true);
+  const [balanceGender, setBalanceGender] = useState<boolean>(true);
 
   // Group division result state
   const [groups, setGroups] = useState<GroupResult[]>([]);
@@ -100,6 +101,9 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
     return students;
   }, [students, studentSource, initialSelectedIds]);
 
+  const poolMaleCount = useMemo(() => poolStudents.filter(s => (s.gender || 'male') === 'male').length, [poolStudents]);
+  const poolFemaleCount = useMemo(() => poolStudents.filter(s => s.gender === 'female').length, [poolStudents]);
+
   // Generate Group Name helper
   const getGroupName = useCallback((index: number, scheme: NamingScheme): string => {
     switch (scheme) {
@@ -115,7 +119,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
     }
   }, []);
 
-  // Main Random Grouping Algorithm (Fisher-Yates Shuffle + Balanced Partition)
+  // Main Random Grouping Algorithm (Fisher-Yates Shuffle + Optional Balanced Gender Partition)
   const performDivision = useCallback(() => {
     if (poolStudents.length === 0) {
       setGroups([]);
@@ -132,16 +136,9 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
     }
 
     setTimeout(() => {
-      // 1. Shuffle students copy using Fisher-Yates
-      const shuffled = [...poolStudents];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-
-      // 2. Determine number of groups
+      // 1. Determine number of groups
       let numGroups = 1;
-      const total = shuffled.length;
+      const total = poolStudents.length;
 
       if (divisionType === 'byGroupCount') {
         numGroups = Math.max(1, Math.min(total, groupCountInput));
@@ -150,7 +147,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
         numGroups = Math.max(1, Math.ceil(total / membersPerGroup));
       }
 
-      // 3. Distribute students evenly across groups (remainder distributed 1 by 1)
+      // 2. Initialize empty groups
       const newGroups: GroupResult[] = [];
       for (let g = 0; g < numGroups; g++) {
         newGroups.push({
@@ -161,16 +158,56 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
         });
       }
 
-      shuffled.forEach((student, index) => {
-        const targetGroupIndex = index % numGroups;
-        newGroups[targetGroupIndex].members.push(student);
-      });
+      if (balanceGender) {
+        // Balanced Male & Female partition:
+        // Separate male and female students
+        const males = poolStudents.filter(s => (s.gender || 'male') === 'male');
+        const females = poolStudents.filter(s => s.gender === 'female');
 
-      // 4. Assign leader if option checked
+        // Shuffle each pool independently with Fisher-Yates
+        const shuffledMales = [...males];
+        for (let i = shuffledMales.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledMales[i], shuffledMales[j]] = [shuffledMales[j], shuffledMales[i]];
+        }
+
+        const shuffledFemales = [...females];
+        for (let i = shuffledFemales.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledFemales[i], shuffledFemales[j]] = [shuffledFemales[j], shuffledFemales[i]];
+        }
+
+        // Distribute males round-robin into groups
+        shuffledMales.forEach((student, index) => {
+          const targetGroupIndex = index % numGroups;
+          newGroups[targetGroupIndex].members.push(student);
+        });
+
+        // Distribute females round-robin starting from the group with fewest males
+        // to maintain both gender balance and total group size equality
+        const femaleStartOffset = (numGroups - (shuffledMales.length % numGroups)) % numGroups;
+        shuffledFemales.forEach((student, index) => {
+          const targetGroupIndex = (femaleStartOffset + index) % numGroups;
+          newGroups[targetGroupIndex].members.push(student);
+        });
+      } else {
+        // Standard random distribution
+        const shuffled = [...poolStudents];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        shuffled.forEach((student, index) => {
+          const targetGroupIndex = index % numGroups;
+          newGroups[targetGroupIndex].members.push(student);
+        });
+      }
+
+      // 3. Assign leader if option checked
       if (assignLeader) {
         newGroups.forEach(group => {
           if (group.members.length > 0) {
-            // Pick a random member as leader
             const randomLeaderIndex = Math.floor(Math.random() * group.members.length);
             group.leaderId = group.members[randomLeaderIndex].id;
           }
@@ -191,7 +228,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
         // ignore
       }
     }, 250);
-  }, [poolStudents, divisionType, groupCountInput, memberCountInput, namingScheme, assignLeader, getGroupName]);
+  }, [poolStudents, divisionType, groupCountInput, memberCountInput, namingScheme, assignLeader, balanceGender, getGroupName]);
 
   // Initial division on open or when pool changes
   useEffect(() => {
@@ -261,16 +298,19 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
     if (groups.length === 0) return;
 
     let text = `📋 KẾT QUẢ CHIA NHÓM - ${className.toUpperCase()}\n`;
-    text += `Tổng số: ${poolStudents.length} học sinh • Gồm ${groups.length} nhóm\n`;
+    text += `Tổng số: ${poolStudents.length} học sinh (${poolMaleCount} Nam • ${poolFemaleCount} Nữ) • Gồm ${groups.length} nhóm\n`;
     text += `Thời gian: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}\n`;
     text += `-------------------------------------------\n\n`;
 
     groups.forEach((group, idx) => {
       const leader = group.members.find(m => m.id === group.leaderId);
-      text += `📌 ${group.name.toUpperCase()} (${group.members.length} thành viên)${leader ? ` - Nhóm trưởng: ${leader.name} ⭐` : ''}\n`;
+      const gMale = group.members.filter(m => (m.gender || 'male') === 'male').length;
+      const gFemale = group.members.filter(m => m.gender === 'female').length;
+      text += `📌 ${group.name.toUpperCase()} (${group.members.length} HS: ${gMale} Nam, ${gFemale} Nữ)${leader ? ` - Nhóm trưởng: ${leader.name} ⭐` : ''}\n`;
       group.members.forEach((member, mIdx) => {
         const isLead = member.id === group.leaderId;
-        text += `   ${mIdx + 1}. ${member.name}${isLead ? ' (Nhóm trưởng ⭐)' : ''}\n`;
+        const gLabel = member.gender === 'female' ? 'Nữ' : 'Nam';
+        text += `   ${mIdx + 1}. ${member.name} (${gLabel})${isLead ? ' - Nhóm trưởng ⭐' : ''}\n`;
       });
       text += '\n';
     });
@@ -297,7 +337,8 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
           const member = g.members[r];
           if (member) {
             const isLead = member.id === g.leaderId;
-            rowObj[g.name] = `${member.name}${isLead ? ' (Nhóm trưởng)' : ''}`;
+            const gLabel = member.gender === 'female' ? 'Nữ' : 'Nam';
+            rowObj[g.name] = `${member.name} (${gLabel})${isLead ? ' [Trưởng]' : ''}`;
           } else {
             rowObj[g.name] = '';
           }
@@ -327,7 +368,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
       <div className={`print-clean bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full flex flex-col overflow-hidden border border-slate-200 transition-all ${
         isPresentationMode
           ? 'h-full w-full rounded-none max-w-none border-none'
-          : 'max-w-5xl max-h-[92vh]'
+          : 'w-[96vw] max-w-6xl 2xl:max-w-7xl max-h-[94vh]'
       }`}>
         {/* Header Bar */}
         <div className="px-4 sm:px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
@@ -538,34 +579,52 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
 
             {/* Quick check options bar */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-              <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
-                <input
-                  type="checkbox"
-                  checked={assignLeader}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setAssignLeader(checked);
-                    if (checked) {
-                      setGroups(prev =>
-                        prev.map(g => {
-                          if (g.members.length > 0 && !g.leaderId) {
-                            const rIdx = Math.floor(Math.random() * g.members.length);
-                            return { ...g, leaderId: g.members[rIdx].id };
-                          }
-                          return g;
-                        })
-                      );
-                    } else {
-                      setGroups(prev => prev.map(g => ({ ...g, leaderId: undefined })));
-                    }
-                  }}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <span className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  Chỉ định ngẫu nhiên 1 nhóm trưởng cho mỗi nhóm
-                </span>
-              </label>
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={balanceGender}
+                    onChange={(e) => setBalanceGender(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1 font-semibold text-slate-800">
+                    <span className="text-blue-600 font-bold">⚖️</span>
+                    <span>Chia đều Nam và Nữ</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      (♂ {poolMaleCount} • ♀ {poolFemaleCount})
+                    </span>
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={assignLeader}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setAssignLeader(checked);
+                      if (checked) {
+                        setGroups(prev =>
+                          prev.map(g => {
+                            if (g.members.length > 0 && !g.leaderId) {
+                              const rIdx = Math.floor(Math.random() * g.members.length);
+                              return { ...g, leaderId: g.members[rIdx].id };
+                            }
+                            return g;
+                          })
+                        );
+                      } else {
+                        setGroups(prev => prev.map(g => ({ ...g, leaderId: undefined })));
+                      }
+                    }}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                    Chỉ định nhóm trưởng
+                  </span>
+                </label>
+              </div>
 
               {/* Action buttons: Copy & Excel */}
               <div className="flex items-center gap-1.5">
@@ -640,16 +699,16 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
               </p>
             </div>
           ) : (
-            <div className={`grid gap-4 sm:gap-5 ${
+            <div className={`grid gap-3.5 sm:gap-5 ${
               groups.length === 1
                 ? 'grid-cols-1 max-w-md mx-auto'
                 : groups.length === 2
-                ? 'grid-cols-1 md:grid-cols-2'
+                ? 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto'
                 : groups.length === 3
-                ? 'grid-cols-1 md:grid-cols-3'
+                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
                 : groups.length === 4
                 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
             }`}>
               {groups.map((group, groupIndex) => {
                 const palette = COLOR_PALETTES[groupIndex % COLOR_PALETTES.length];
@@ -723,7 +782,7 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
                     </div>
 
                     {/* Members List */}
-                    <div className="p-3 divide-y divide-slate-100 flex-1 min-h-[140px] max-h-[360px] overflow-y-auto">
+                    <div className="p-2.5 sm:p-3 divide-y divide-slate-100 flex-1 min-h-[140px] max-h-[380px] overflow-y-auto">
                       {group.members.length === 0 ? (
                         <div className="h-full flex items-center justify-center text-slate-400 text-xs italic py-6">
                           Chưa có thành viên
@@ -736,35 +795,46 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
                           return (
                             <div
                               key={member.id}
-                              className={`py-2 px-2 rounded-xl flex items-center justify-between gap-2 group transition-all ${
+                              className={`py-2 px-2.5 rounded-xl flex items-center justify-between gap-2 group transition-all ${
                                 isBeingMoved
-                                  ? 'bg-amber-100/80 ring-1 ring-amber-400'
+                                  ? 'bg-amber-100/90 ring-1 ring-amber-400'
                                   : isLeader
-                                  ? 'bg-amber-50/80'
+                                  ? 'bg-amber-50/90'
                                   : 'hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 ${
                                   isLeader
-                                    ? 'bg-amber-500 text-slate-950 font-black'
+                                    ? 'bg-amber-400 text-slate-950 font-black shadow-2xs'
                                     : 'bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700'
                                 }`}>
                                   {mIdx + 1}
                                 </span>
 
-                                <span className={`text-xs truncate ${
-                                  isLeader ? 'font-black text-slate-900' : 'font-medium text-slate-700'
-                                }`}>
-                                  {member.name}
-                                </span>
-
-                                {isLeader && (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400 text-slate-950 shadow-2xs shrink-0">
-                                    <Star className="w-2.5 h-2.5 fill-slate-950" />
-                                    Trưởng
+                                <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
+                                  <span className={`text-xs leading-snug break-words ${
+                                    isLeader ? 'font-black text-slate-950' : 'font-semibold text-slate-800'
+                                  }`}>
+                                    {member.name}
                                   </span>
-                                )}
+
+                                  {/* Member Gender badge */}
+                                  <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold shrink-0 select-none ${
+                                    member.gender === 'female'
+                                      ? 'bg-rose-100 text-rose-700 border border-rose-200/80'
+                                      : 'bg-blue-100 text-blue-700 border border-blue-200/80'
+                                  }`}>
+                                    {member.gender === 'female' ? '♀ Nữ' : '♂ Nam'}
+                                  </span>
+
+                                  {isLeader && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400 text-slate-950 shadow-2xs shrink-0 whitespace-nowrap">
+                                      <Star className="w-2.5 h-2.5 fill-slate-950" />
+                                      Trưởng
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Member Quick Actions */}
@@ -810,15 +880,28 @@ export const GroupDivisionModal: React.FC<GroupDivisionModalProps> = ({
                     </div>
 
                     {/* Group Card Footer Stats */}
-                    <div className="px-3 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
-                      <span>Tỷ lệ: {poolStudents.length > 0 ? Math.round((group.members.length / poolStudents.length) * 100) : 0}%</span>
-                      {group.leaderId && (
-                        <span className="text-amber-600 font-bold flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-amber-500" />
-                          {group.members.find(m => m.id === group.leaderId)?.name}
-                        </span>
-                      )}
-                    </div>
+                    {(() => {
+                      const gMale = group.members.filter(m => (m.gender || 'male') === 'male').length;
+                      const gFemale = group.members.filter(m => m.gender === 'female').length;
+                      return (
+                        <div className="px-3 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
+                          <span className="flex items-center gap-1">
+                            <span className="font-bold text-blue-600">♂ {gMale}</span>
+                            <span className="text-slate-300">•</span>
+                            <span className="font-bold text-rose-600">♀ {gFemale}</span>
+                            <span className="text-slate-400 text-[10px]">
+                              ({poolStudents.length > 0 ? Math.round((group.members.length / poolStudents.length) * 100) : 0}%)
+                            </span>
+                          </span>
+                          {group.leaderId && (
+                            <span className="text-amber-600 font-bold flex items-center gap-1 truncate max-w-[140px]" title={group.members.find(m => m.id === group.leaderId)?.name}>
+                              <Star className="w-3 h-3 fill-amber-500 shrink-0" />
+                              <span className="truncate">{group.members.find(m => m.id === group.leaderId)?.name}</span>
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
